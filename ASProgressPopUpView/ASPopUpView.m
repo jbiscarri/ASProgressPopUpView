@@ -90,7 +90,8 @@ NSString *const FillColorAnimation = @"fillColor";
         
         _colorAnimLayer = [CAShapeLayer layer];
         
-        [self.layer addSublayer:_colorAnimLayer];
+        //JOAN: REMOVE POPUPBOX
+        //[self.layer addSublayer:_colorAnimLayer];
         [self.layer addSublayer:_textLayer];
 
         _attributedString = [[NSMutableAttributedString alloc] initWithString:@" " attributes:nil];
