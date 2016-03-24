@@ -31,7 +31,7 @@ const float ARROW_LENGTH = 8.0;
 const float POPUPVIEW_WIDTH_PAD = 1.15;
 const float POPUPVIEW_HEIGHT_PAD = 1.1;
 
-NSString *const FillColorAnimation = @"fillColor";
+NSString *const strokeColorAnimation = @"strokeColor";
 
 @implementation ASPopUpView
 {
@@ -45,7 +45,7 @@ NSString *const FillColorAnimation = @"fillColor";
     CGFloat _arrowCenterOffset;
     
     // never actually visible, its purpose is to interpolate color values for the popUpView color animation
-    // using shape layer because it has a 'fillColor' property which is consistent with _backgroundLayer
+    // using shape layer because it has a 'strokeColor' property which is consistent with _backgroundLayer
     CAShapeLayer *_colorAnimLayer;
 }
 
@@ -108,18 +108,19 @@ NSString *const FillColorAnimation = @"fillColor";
 
 - (UIColor *)color
 {
-    return [UIColor colorWithCGColor:[_pathLayer.presentationLayer fillColor]];
+    return [UIColor colorWithCGColor:[_pathLayer.presentationLayer strokeColor]];
 }
 
 - (void)setColor:(UIColor *)color
 {
-    _pathLayer.fillColor = color.CGColor;
-    [_colorAnimLayer removeAnimationForKey:FillColorAnimation]; // single color, no animation required
+    _pathLayer.fillColor = [UIColor clearColor].CGColor;
+    _pathLayer.strokeColor = color.CGColor;
+    [_colorAnimLayer removeAnimationForKey:strokeColorAnimation]; // single color, no animation required
 }
 
 - (UIColor *)opaqueColor
 {
-    return opaqueUIColorFromCGColor([_colorAnimLayer.presentationLayer fillColor] ?: _pathLayer.fillColor);
+    return opaqueUIColorFromCGColor([_colorAnimLayer.presentationLayer strokeColor] ?: _pathLayer.strokeColor);
 }
 
 - (void)setTextColor:(UIColor *)color
@@ -152,7 +153,7 @@ NSString *const FillColorAnimation = @"fillColor";
         [cgColors addObject:(id)col.CGColor];
     }
     
-    CAKeyframeAnimation *colorAnim = [CAKeyframeAnimation animationWithKeyPath:FillColorAnimation];
+    CAKeyframeAnimation *colorAnim = [CAKeyframeAnimation animationWithKeyPath:strokeColorAnimation];
     colorAnim.keyTimes = keyTimes;
     colorAnim.values = cgColors;
     colorAnim.fillMode = kCAFillModeBoth;
@@ -165,14 +166,14 @@ NSString *const FillColorAnimation = @"fillColor";
     _colorAnimLayer.speed = FLT_MIN;
     _colorAnimLayer.timeOffset = 0.0;
     
-    [_colorAnimLayer addAnimation:colorAnim forKey:FillColorAnimation];
+    [_colorAnimLayer addAnimation:colorAnim forKey:strokeColorAnimation];
 }
 
 - (void)setAnimationOffset:(CGFloat)animOffset returnColor:(void (^)(UIColor *opaqueReturnColor))block
 {
-    if ([_colorAnimLayer animationForKey:FillColorAnimation]) {
+    if ([_colorAnimLayer animationForKey:strokeColorAnimation]) {
         _colorAnimLayer.timeOffset = animOffset;
-        _pathLayer.fillColor = [_colorAnimLayer.presentationLayer fillColor];
+        _pathLayer.strokeColor = [_colorAnimLayer.presentationLayer strokeColor];
         block([self opaqueColor]);
     }
 }
@@ -276,7 +277,8 @@ NSString *const FillColorAnimation = @"fillColor";
     _colorAnimLayer.speed = 0.0;
     _colorAnimLayer.timeOffset = [self.delegate currentValueOffset];
     
-    _pathLayer.fillColor = [_colorAnimLayer.presentationLayer fillColor];
+    _pathLayer.strokeColor = [_colorAnimLayer.presentationLayer strokeColor];
+    _pathLayer.strokeColor = [[UIColor clearColor] CGColor];
     [self.delegate colorDidUpdate:[self opaqueColor]];
 }
 
@@ -286,12 +288,14 @@ NSString *const FillColorAnimation = @"fillColor";
 {
     if (CGRectEqualToRect(rect, CGRectZero)) return nil;
     
-    rect = (CGRect){CGPointZero, rect.size}; // ensure origin is CGPointZero
+    int offset = 10;
+    rect = (CGRect){CGPointMake(0, offset*1.5), CGSizeMake(rect.size.width, rect.size.height-offset*2)}; // ensure origin is CGPointZero
 
     // Create rounded rect
     CGRect roundedRect = rect;
     roundedRect.size.height -= ARROW_LENGTH;
-    UIBezierPath *popUpPath = [UIBezierPath bezierPathWithRoundedRect:roundedRect cornerRadius:_cornerRadius];
+    //UIBezierPath *popUpPath = [UIBezierPath bezierPathWithRoundedRect:roundedRect cornerRadius:_cornerRadius];
+    UIBezierPath *popUpPath = [[UIBezierPath alloc] init];
     
     // Create arrow path
     CGFloat maxX = CGRectGetMaxX(roundedRect); // prevent arrow from extending beyond this point
@@ -303,9 +307,9 @@ NSString *const FillColorAnimation = @"fillColor";
     
     UIBezierPath *arrowPath = [UIBezierPath bezierPath];
     [arrowPath moveToPoint:tip];
-    [arrowPath addLineToPoint:CGPointMake(MAX(arrowTipX - x, 0), CGRectGetMaxY(roundedRect) - arrowLength)];
-    [arrowPath addLineToPoint:CGPointMake(MIN(arrowTipX + x, maxX), CGRectGetMaxY(roundedRect) - arrowLength)];
-    [arrowPath closePath];
+    [arrowPath addLineToPoint:CGPointMake(MAX(arrowTipX - x, 0), CGRectGetMaxY(roundedRect) - arrowLength + offset)];
+    [arrowPath moveToPoint:tip];
+    [arrowPath addLineToPoint:CGPointMake(MIN(arrowTipX + x, maxX), CGRectGetMaxY(roundedRect) - arrowLength + offset)];
     
     [popUpPath appendPath:arrowPath];
     
